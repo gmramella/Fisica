@@ -98,11 +98,7 @@ Se quiser debugar com x32, tem que repetir os 3 passos anteriores com xx = 32
 
 # Lista de Exercícios 1
 
-## Passos (pessoal)
-
-Após fazer o solicitado, criei classes Render e View e substituí gluOrtho2D por glOrtho com near = -1 e far = 1
-
-## Passos (necessário)
+## Passos
 
 Definir HelloWorld como projeto de inicialização
 
