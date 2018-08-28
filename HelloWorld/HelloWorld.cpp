@@ -27,9 +27,20 @@
 #define DEGTORAD 0.0174532925199432957f
 #define RADTODEG 57.295779513082320876f
 
+const b2Vec2 b2Vec2_right = b2Vec2(1, 0);
+const b2Vec2 b2Vec2_left = b2Vec2(-1, 0);
+const b2Vec2 b2Vec2_up = b2Vec2(0, 1);
+const b2Vec2 b2Vec2_down = b2Vec2(0, -1);
+
+const b2Vec2 b2Vec2_upright = b2Vec2(cosf(45 * DEGTORAD), sinf(45 * DEGTORAD));
+const b2Vec2 b2Vec2_upleft = b2Vec2(cosf(135 * DEGTORAD), sinf(135 * DEGTORAD));
+const b2Vec2 b2Vec2_downright = b2Vec2(cosf(225 * DEGTORAD), sinf(225 * DEGTORAD));
+const b2Vec2 b2Vec2_downleft = b2Vec2(cosf(315 * DEGTORAD), sinf(315 * DEGTORAD));
+
 using namespace std;
 
 void CreateBodies();//Cria corpos iniciais do cenário
+b2Body *CreateCapsule(b2Vec2 center = b2Vec2(0, 0), float32 w = 1, float32 h = 1, float32 m = 1, float32 f = 0.5, float32 r = 0.5, b2BodyType bt = b2_dynamicBody);
 b2Body *CreateCircle(b2Vec2 center = b2Vec2(0, 0), float32 rad = 1, float32 m = 1, float32 f = 0.5, float32 r = 0.5, b2BodyType bt = b2_dynamicBody);
 b2Body *CreateHouses(b2Vec2 center = b2Vec2(0, 0), float32 m = 1000, float32 f = 1, float32 r = 1, b2BodyType bt = b2_staticBody);
 b2Body *CreateLine(b2Vec2 center = b2Vec2(0, -39.5), b2Vec2 left = b2Vec2(-39.5, 0), b2Vec2 right = b2Vec2(39.5, 0), float32 m = 2, float32 f = 0.5, float32 r = 0.5, b2BodyType bt = b2_staticBody);
@@ -40,6 +51,7 @@ void InitBox2D();//Função de inicialização da Box2D
 float32 PolygonArea(b2Vec2* vertices, int size);//Calcula área de um polígono CONVEXO
 float RandomInRange(float least, float most);//Retorna um float aleatório no intervalo [least, most]
 void RunBox2D();//Função de Execução da Simulação
+void SetGravity(b2Vec2 gravity);//Função de configuração da gravidade
 
 static void click_callback(GLFWwindow* window, int button, int action, int mode);//Callback de click de mouse da glfw
 static void error_callback(int error, const char* description);//Callback de erro da glfw
@@ -53,15 +65,22 @@ int32 positionIterations;
 float xMin = -40.0, xMax = 40.0, yMin = -40.0, yMax = 40.0; //ortho2D
 
 b2Vec2 defaultGravity = b2Vec2(0, -9.8f);
+float32 gravityMagnitude = sqrtf(defaultGravity.x * defaultGravity.x + defaultGravity.y * defaultGravity.y);
 b2World *world;
 std::vector<b2Body*> bodies;
 
-int which = 0;
+int list = 1;
+int task = 1;
 
 float fric = 0;
 float rest = 0;
 bool fricDir = 1;
 bool restDir = 1;
+
+float32 angle = 45;
+float32 forceMultiplier = 16;
+b2Vec2 movement = b2Vec2(0, 0);
+bool movementChanged = false;
 
 int main(int argc, char** argv)
 {
@@ -129,40 +148,42 @@ int main(int argc, char** argv)
 
 void CreateBodies()
 {
-	switch (which) {
-	case 0:
-		world->SetGravity(defaultGravity);
-		bodies.push_back(CreateRectangle(b2Vec2(-10, 10), 10, 10, 1000, 0.5, 0.5, b2_dynamicBody));
-		bodies.push_back(CreateRectangle(b2Vec2(10, 10), 10, 10, 1000, 0.5, 0.5, b2_dynamicBody));
-		bodies.push_back(CreateLine(b2Vec2(0, -39.5), b2Vec2(-39.5, 0), b2Vec2(39.5, 0), 2, 0.5, 0.5, b2_staticBody));
-		break;
-	case 1:
-		world->SetGravity(defaultGravity);
+	float32 w21 = 5;
+	float32 h21 = 20;
+	float32 gap21 = 4;
+
+	float32 w23 = 5;
+	float32 h23 = 20;
+
+	switch (10 * list + task)
+	{
+	case 11:
+		SetGravity(defaultGravity);
 		bodies.push_back(CreateRectangle(b2Vec2(0, 0), 10, 10, 1000, 0.5, 0.5, b2_dynamicBody));
 		bodies.push_back(CreateCircle(b2Vec2(0, 10), 5, 1, 0.5, 0.5, b2_dynamicBody));
 		bodies.push_back(CreateLine(b2Vec2(0, -39.5), b2Vec2(-39.5, 0), b2Vec2(39.5, 0), 2, 0.5, 0.5, b2_staticBody));
 		break;
-	case 2:
-		world->SetGravity(b2Vec2(defaultGravity.x * -1, defaultGravity.y * -1));
+	case 12:
+		SetGravity(b2Vec2(defaultGravity.x * -1, defaultGravity.y * -1));
 		bodies.push_back(CreateLine(b2Vec2(0, -40), b2Vec2(-53, 0), b2Vec2(53, 0), 2, 0.5, 0.5, b2_staticBody));
 		bodies.push_back(CreateLine(b2Vec2(0, 40), b2Vec2(-53, 0), b2Vec2(53, 0), 2, 0.5, 0.5, b2_staticBody));
 		bodies.push_back(CreateLine(b2Vec2(-53, 0), b2Vec2(0, 40), b2Vec2(0, -53), 2, 0.5, 0.5, b2_staticBody));
 		bodies.push_back(CreateLine(b2Vec2(53, 0), b2Vec2(0, 40), b2Vec2(0, -53), 2, 0.5, 0.5, b2_staticBody));
 		bodies.push_back(CreateCircle(b2Vec2(0, 0), 5, 1, 0.5, 0.5, b2_dynamicBody));
 		break;
-	case 3:
-		world->SetGravity(defaultGravity);
+	case 13:
+		SetGravity(defaultGravity);
 		break;
-	case 4:
-		world->SetGravity(defaultGravity);
+	case 14:
+		SetGravity(defaultGravity);
 		bodies.push_back(CreateLine(b2Vec2(0, -39.5), b2Vec2(-39.5, 0), b2Vec2(39.5, 0), 2, 0.5, 0.0, b2_staticBody));
 		break;
-	case 5:
-		world->SetGravity(defaultGravity);
+	case 15:
+		SetGravity(defaultGravity);
 		bodies.push_back(CreateLine(b2Vec2(0, -10), b2Vec2(-30, 30), b2Vec2(30, -30), 2, 0.5, 0.0, b2_staticBody));
 		break;
-	case 6:
-		world->SetGravity(defaultGravity);
+	case 16:
+		SetGravity(defaultGravity);
 		for (int i = 1; i <= 6; i++)
 		{
 			bodies.push_back(CreateRectangle(b2Vec2(-5.0f, i * 10.0f), 10.0f, 10.0f, 1000.0f, 0.5f, 0.5f, b2_dynamicBody));
@@ -170,8 +191,8 @@ void CreateBodies()
 		}
 		bodies.push_back(CreateLine(b2Vec2(0.0f, -39.5), b2Vec2(-39.5, 0.0f), b2Vec2(39.5, 0.0f), 2.0f, 0.5f, 0.5f, b2_staticBody));
 		break;
-	case 7:
-		world->SetGravity(defaultGravity);
+	case 17:
+		SetGravity(defaultGravity);
 		for (int i = -5; i < 5; i++)
 		{
 			for (int j = 1; j <= 10; j++)
@@ -182,11 +203,67 @@ void CreateBodies()
 		}
 		bodies.push_back(CreateLine(b2Vec2(0.0f, -39.5), b2Vec2(-60, 0.0f), b2Vec2(60, 0.0f), 2.0f, 1.0f, 0.0f, b2_staticBody));
 		break;
-	case 8:
-		world->SetGravity(defaultGravity);
+	case 18:
+		SetGravity(defaultGravity);
 		bodies.push_back(CreateHouses(b2Vec2(0.0f, 0.0f), 1000.0f, 1.0f, 1.0f, b2_staticBody));
 		break;
+	
+	case 21:
+		SetGravity(defaultGravity);
+		bodies.push_back(CreateLine(b2Vec2(0, -39.5), b2Vec2(-50, 0), b2Vec2(50, 0), 2, 1.0f, 0.0f, b2_staticBody));
+		for (int i = 0; i < 6; i++)
+		{
+			bodies.push_back(CreateRectangle(b2Vec2(0.0f + i * (w21 + gap21), -39.5 + h21 / 2), w21, h21, 100.0f, 1.0f, 0.0f, b2_dynamicBody));
+		}
+		break;
+	case 22:
+		SetGravity(defaultGravity);
+		bodies.push_back(CreateLine(b2Vec2(0, -39.5), b2Vec2(-50, 0), b2Vec2(50, 0), 2, 1.0f, 0.0f, b2_staticBody));
+		break;
+	case 23:
+		SetGravity(defaultGravity);
+		bodies.push_back(CreateLine(b2Vec2(0, -39.5), b2Vec2(-50, 0), b2Vec2(50, 0), 2, 1.0f, 0.0f, b2_staticBody));
+		bodies.push_back(CreateCircle(b2Vec2(0, -39.5 + h23 / 2), w23, 100.0f, 1.0f, 0.0f, b2_dynamicBody));
+		break;
 	}
+}
+
+b2Body *CreateCapsule(b2Vec2 center, float32 w, float32 h, float32 m, float32 f, float32 r, b2BodyType bt)
+{
+	float32 rad = w / 2;
+
+	b2Body *b;
+
+	b2BodyDef bd;
+	bd.position.Set(center.x, center.y);
+	bd.type = b2_staticBody;
+
+	b = world->CreateBody(&bd);
+
+	b2PolygonShape ps;
+	ps.SetAsBox(w / 2, h / 2 - rad);
+
+	b2FixtureDef fd;
+	fd.shape = &ps;
+	fd.density = m / (w * h * 1);
+	fd.friction = f;
+	fd.restitution = r;
+
+	b->CreateFixture(&fd);
+
+	b2CircleShape cs;
+	cs.m_p.Set(0, h / 2 - rad);
+	cs.m_radius = rad;
+
+	fd.shape = &cs;
+	fd.density = m / (4 * b2_pi * rad * rad * rad / 3);
+	b->CreateFixture(&fd);
+
+	cs.m_p.Set(0, -h / 2 + rad);
+	fd.shape = &cs;
+	b->CreateFixture(&fd);
+
+	return b;
 }
 
 b2Body *CreateCircle(b2Vec2 center, float32 rad, float32 m, float32 f, float32 r, b2BodyType bt)
@@ -371,6 +448,13 @@ void RunBox2D()
 	world->ClearForces();
 }
 
+void SetGravity(b2Vec2 gravity)
+{
+	world->SetGravity(gravity);
+	b2Vec2 grav = world->GetGravity();
+	gravityMagnitude = sqrtf(grav.x * grav.x + grav.y * grav.y);
+}
+
 static void click_callback(GLFWwindow* window, int button, int action, int mode)
 {
 	/*if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS)
@@ -390,55 +474,63 @@ static void key_callback(GLFWwindow* window, int key, int scancode, int action, 
 {
 	if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
 		glfwSetWindowShouldClose(window, GL_TRUE);
-	if ((key == GLFW_KEY_0 || key == GLFW_KEY_KP_0) && action == GLFW_PRESS) {
-		which = 0;
+	if ((key == GLFW_KEY_1) && action == GLFW_PRESS) {
+		task = 1;
 		DeleteBodies();
 		CreateBodies();
 	}
-	if ((key == GLFW_KEY_1 || key == GLFW_KEY_KP_1) && action == GLFW_PRESS) {
-		which = 1;
+	if ((key == GLFW_KEY_2) && action == GLFW_PRESS) {
+		task = 2;
 		DeleteBodies();
 		CreateBodies();
 	}
-	if ((key == GLFW_KEY_2 || key == GLFW_KEY_KP_2) && action == GLFW_PRESS) {
-		which = 2;
+	if ((key == GLFW_KEY_3) && action == GLFW_PRESS) {
+		task = 3;
 		DeleteBodies();
 		CreateBodies();
 	}
-	if ((key == GLFW_KEY_3 || key == GLFW_KEY_KP_3) && action == GLFW_PRESS) {
-		which = 3;
+	if ((key == GLFW_KEY_4) && action == GLFW_PRESS) {
+		task = 4;
 		DeleteBodies();
 		CreateBodies();
 	}
-	if ((key == GLFW_KEY_4 || key == GLFW_KEY_KP_4) && action == GLFW_PRESS) {
-		which = 4;
+	if ((key == GLFW_KEY_5) && action == GLFW_PRESS) {
+		task = 5;
 		DeleteBodies();
 		CreateBodies();
 	}
-	if ((key == GLFW_KEY_5 || key == GLFW_KEY_KP_5) && action == GLFW_PRESS) {
-		which = 5;
+	if ((key == GLFW_KEY_6) && action == GLFW_PRESS) {
+		task = 6;
 		DeleteBodies();
 		CreateBodies();
 	}
-	if ((key == GLFW_KEY_6 || key == GLFW_KEY_KP_6) && action == GLFW_PRESS) {
-		which = 6;
+	if ((key == GLFW_KEY_7) && action == GLFW_PRESS) {
+		task = 7;
 		DeleteBodies();
 		CreateBodies();
 	}
-	if ((key == GLFW_KEY_7 || key == GLFW_KEY_KP_7) && action == GLFW_PRESS) {
-		which = 7;
+	if ((key == GLFW_KEY_8) && action == GLFW_PRESS) {
+		task = 8;
 		DeleteBodies();
 		CreateBodies();
 	}
-	if ((key == GLFW_KEY_8 || key == GLFW_KEY_KP_8) && action == GLFW_PRESS) {
-		which = 8;
+
+	if ((key == GLFW_KEY_KP_1) && action == GLFW_PRESS) {
+		list = 1;
+		task = 1;
+		DeleteBodies();
+		CreateBodies();
+	}
+	if ((key == GLFW_KEY_KP_2) && action == GLFW_PRESS) {
+		list = 2;
+		task = 1;
 		DeleteBodies();
 		CreateBodies();
 	}
 
 	if (key == GLFW_KEY_B && (action == GLFW_PRESS || action == GLFW_REPEAT))
 	{
-		if (which == 4)
+		if ((10 * list + task) == 14)
 		{
 			b2Vec2 center = b2Vec2(0, 0);
 			float32 w = 2;
@@ -459,7 +551,7 @@ static void key_callback(GLFWwindow* window, int key, int scancode, int action, 
 				rest = 1.0;
 			}
 		}
-		else if (which == 5)
+		else if ((10 * list + task) == 15)
 		{
 			b2Vec2 center = b2Vec2(0, 0);
 			float32 w = 2;
@@ -485,7 +577,7 @@ static void key_callback(GLFWwindow* window, int key, int scancode, int action, 
 	}
 	if (key == GLFW_KEY_C && action == GLFW_PRESS)
 	{
-		if (which == 3)
+		if ((10 * list + task) == 13)
 		{
 			b2Vec2 center = b2Vec2(RandomInRange(-43, 43), RandomInRange(-30, 30));
 			float32 rad = RandomInRange(1, 10);
@@ -497,7 +589,7 @@ static void key_callback(GLFWwindow* window, int key, int scancode, int action, 
 	}
 	if (key == GLFW_KEY_L && action == GLFW_PRESS)
 	{
-		if (which == 3)
+		if ((10 * list + task) == 13)
 		{
 			b2Vec2 center = b2Vec2(RandomInRange(-43, 43), RandomInRange(-30, 30));
 			b2Vec2 left = b2Vec2(RandomInRange(-10, 10), RandomInRange(-10, 10));
@@ -510,7 +602,7 @@ static void key_callback(GLFWwindow* window, int key, int scancode, int action, 
 	}
 	if (key == GLFW_KEY_R && action == GLFW_PRESS)
 	{
-		if (which == 3)
+		if ((10 * list + task) == 13)
 		{
 			b2Vec2 center = b2Vec2(RandomInRange(-43, 43), RandomInRange(-30, 30));
 			float32 w = RandomInRange(0, 10);
@@ -520,6 +612,133 @@ static void key_callback(GLFWwindow* window, int key, int scancode, int action, 
 			float32 r = RandomInRange(0, 1);
 			bodies.push_back(CreateRectangle(center, w, h, m, f, r, b2_dynamicBody));
 		}
+	}
+
+	if (key == GLFW_KEY_F && action == GLFW_PRESS)
+	{
+		if ((10 * list + task) == 21)
+		{
+			b2Vec2 g = world->GetGravity();
+			b2Vec2 force = forceMultiplier * 1000.0f * sqrtf(g.x * g.x + g.y * g.y) * b2Vec2_right;
+			bodies[1]->ApplyForce(force, bodies[1]->GetWorldPoint(b2Vec2(0, 20)), true);
+		}
+	}
+	if (key == GLFW_KEY_SPACE && action == GLFW_PRESS)
+	{
+		if ((10 * list + task) == 22)
+		{
+			if (world->GetBodyCount() < 2)
+			{
+				float32 r = 5.0f;
+				bodies.push_back(CreateCircle(b2Vec2(-39.5 + r, -39.5 + r), r, 1000.0f, 0.0f, 0.9f, b2_dynamicBody));
+			}
+			b2Vec2 g = world->GetGravity();
+			float32 magnitude = forceMultiplier * 1000.0f * sqrtf(g.x * g.x + g.y * g.y);
+			b2Vec2 force = magnitude * b2Vec2(cosf(angle * DEGTORAD), sinf(angle * DEGTORAD));
+			bodies[1]->ApplyForce(force, bodies[1]->GetWorldPoint(b2Vec2(0, 0)), true);
+		}
+	}
+	if (key == GLFW_KEY_KP_ADD && (action == GLFW_PRESS || action == GLFW_REPEAT))
+	{
+		if ((10 * list + task) == 22)
+		{
+			angle += 5;
+		}
+	}
+	if (key == GLFW_KEY_KP_SUBTRACT && (action == GLFW_PRESS || action == GLFW_REPEAT))
+	{
+		if ((10 * list + task) == 22)
+		{
+			angle -= 5;
+		}
+	}
+	if (key == GLFW_KEY_KP_MULTIPLY && (action == GLFW_PRESS || action == GLFW_REPEAT))
+	{
+		if ((10 * list + task) == 22)
+		{
+			forceMultiplier *= 2;
+		}
+	}
+	if (key == GLFW_KEY_KP_DIVIDE && (action == GLFW_PRESS || action == GLFW_REPEAT))
+	{
+		if ((10 * list + task) == 22)
+		{
+			forceMultiplier /= 2;
+			if (forceMultiplier < 1) forceMultiplier = 1;
+		}
+	}
+	if (key == GLFW_KEY_W && action == GLFW_PRESS)
+	{
+		if ((10 * list + task) == 23)
+		{
+			movement.y += 1;
+			movementChanged = true;
+		}
+	}
+	if (key == GLFW_KEY_A && action == GLFW_PRESS)
+	{
+		if ((10 * list + task) == 23)
+		{
+			movement.x -= 1;
+			movementChanged = true;
+		}
+	}
+	if (key == GLFW_KEY_D && action == GLFW_PRESS)
+	{
+		if ((10 * list + task) == 23)
+		{
+			movement.x += 1;
+			movementChanged = true;
+		}
+	}
+	if (key == GLFW_KEY_A && action == GLFW_REPEAT)
+	{
+		if ((10 * list + task) == 23)
+		{
+			movementChanged = true;
+		}
+	}
+	if (key == GLFW_KEY_D && action == GLFW_REPEAT)
+	{
+		if ((10 * list + task) == 23)
+		{
+			movementChanged = true;
+		}
+	}
+	if (key == GLFW_KEY_W && action == GLFW_RELEASE)
+	{
+		if ((10 * list + task) == 23)
+		{
+			movement.y -= 1;
+			movementChanged = true;
+		}
+	}
+	if (key == GLFW_KEY_A && action == GLFW_RELEASE)
+	{
+		if ((10 * list + task) == 23)
+		{
+			movement.x += 1;
+			movementChanged = true;
+		}
+	}
+	if (key == GLFW_KEY_D && action == GLFW_RELEASE)
+	{
+		if ((10 * list + task) == 23)
+		{
+			movement.x -= 1;
+			movementChanged = true;
+		}
+	}
+	if (movementChanged)
+	{
+		float32 movementLength = 1;//if 0, division by 0 can occur
+		if (movement.x != 0 || movement.y != 0)
+			movementLength = sqrtf(movement.x * movement.x + movement.y * movement.y);
+		b2Vec2 movementDir = b2Vec2(movement.x / movementLength, movement.y / movementLength);
+		b2Vec2 acc = world->GetGravity() + 10 * gravityMagnitude * movementDir;
+		b2Vec2 force = 100 * acc;
+		bodies[1]->ApplyForce(force, bodies[1]->GetWorldCenter(), true);
+		movementChanged = false;
 	}
 }
 

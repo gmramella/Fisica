@@ -96,7 +96,25 @@ Adicionar glfw3.lib e opengl32.lib em Propriedades de Configuração > Vinculado
 
 Se quiser debugar com x32, tem que repetir os 3 passos anteriores com xx = 32
 
-# Lista de Exercícios 1
+# Features
+
+Constantes matemáticas
+
+Métodos para criação de cápsulas, círculos, casas (corpos com múltiplas fixtures), linhas e retângulos
+
+Método de deleção quando objetos ficam abaixo da câmera
+
+Método que calcula a área de um polígono convexo
+
+Renovação do mundo para cada exercício (deleção dos corpos antigos do exercícios anterior e criação dos necessários pro novo)
+
+Método que retorna um número aleatório dentro de um intervalo
+
+Método que configura gravidade e mantém sua magnitude em uma variável acessível
+
+Callbacks de erro, teclado e mouse (movimentação e clique)
+
+# Listas de Exercícios
 
 ## Passos
 
@@ -104,7 +122,9 @@ Definir HelloWorld como projeto de inicialização
 
 ## Interação do usuário com o programa
 
-Pressionar 0 a 8 para criar o mundo conforme o que é pedido no exercício 1 a 8 da lista 1 (0 é um default)
+Pressionar 1 a 9 para criar o mundo do exercício 1 da lista de exercícios 1 a 9
+
+Pressionar 1 a 9 para criar o mundo conforme o que é pedido nos exercícios 1 a 9 de uma lista de exercícios
 
 Nos exercícios que pedem interação:
 
@@ -112,6 +132,32 @@ Nos exercícios que pedem interação:
 	
 	C cria círculo quando pressionada
 	
+	F produz uma força
+	
 	L cria linha quando pressionada
 	
 	R cria retângulo quando pressionada
+	
+	Espaço lança um círculo
+	
+	+ aumenta ângulo de lançamento do círculo
+	
+	- diminui ângulo de lançamento do círculo
+	
+	* dobra multiplicador da força de lançamento do círculo
+	
+	/ divide multiplicador da força de lançamento do círculo
+	
+	W faz círculo pular
+	
+	A move círculo para a esquerda
+	
+	D move círculo para a direita
+
+Falhas:
+
+	Cápsula não se move
+	
+	Pulo é ilimitado
+	
+	Movimentação é acelerada ao invés de constante
