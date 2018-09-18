@@ -65,6 +65,7 @@ void View::DrawBody(b2Body *b, b2Color color)
 void View::Render(b2World *world)
 {
 	b2Body *b;
+	b2Joint *j;
 	glColor3f(1, 0, 0);
 	glPointSize(5);
 	glLineWidth(3);
@@ -75,6 +76,11 @@ void View::Render(b2World *world)
 	for (b = world->GetBodyList(); b; b = b->GetNext())
 	{
 		DrawBody(b, color);
+	}
+
+	for (j = world->GetJointList(); j; j = j->GetNext())
+	{
+		DrawJoint(j, color);
 	}
 }
 
@@ -90,4 +96,20 @@ void View::PrintBodies(b2World *world)
 		ang = b->GetAngle();
 		printf("%4.2f %4.2f %4.2f\n", pos.x, pos.y, ang);
 	}
+}
+
+void View::DrawJoint(b2Joint *joint, b2Color color)
+{
+	b2Vec2 anchor1, anchor2;
+	anchor1 = joint->GetAnchorA();
+	anchor2 = joint->GetAnchorB();
+
+	glPointSize(5);
+	glBegin(GL_POINTS);
+	glVertex2f(anchor1.x, anchor1.y);
+	glVertex2f(anchor2.x, anchor2.y);
+	glEnd();
+	glPointSize(1);
+
+	renderer.DrawSegment(anchor1, anchor2, color);
 }

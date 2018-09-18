@@ -13,4 +13,6 @@ public:
 	void Render(b2World *world);
 	// Função que imprime todos os objetos  
 	void PrintBodies(b2World *world);
+
+	void DrawJoint(b2Joint *joint, b2Color color);
 };

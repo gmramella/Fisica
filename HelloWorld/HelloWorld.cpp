@@ -40,23 +40,44 @@ const b2Vec2 b2Vec2_downleft = b2Vec2(cosf(315 * DEGTORAD), sinf(315 * DEGTORAD)
 using namespace std;
 
 void CreateBodies();//Cria corpos iniciais do cenário
-b2Body *CreateCapsule(b2Vec2 center = b2Vec2(0, 0), float32 w = 1, float32 h = 1, float32 m = 1, float32 f = 0.5, float32 r = 0.5, b2BodyType bt = b2_dynamicBody);
-b2Body *CreateCircle(b2Vec2 center = b2Vec2(0, 0), float32 rad = 1, float32 m = 1, float32 f = 0.5, float32 r = 0.5, b2BodyType bt = b2_dynamicBody);
-b2Body *CreateHouses(b2Vec2 center = b2Vec2(0, 0), float32 m = 1000, float32 f = 1, float32 r = 1, b2BodyType bt = b2_staticBody);
-b2Body *CreateLine(b2Vec2 center = b2Vec2(0, -39.5), b2Vec2 left = b2Vec2(-39.5, 0), b2Vec2 right = b2Vec2(39.5, 0), float32 m = 2, float32 f = 0.5, float32 r = 0.5, b2BodyType bt = b2_staticBody);
-b2Body *CreateRectangle(b2Vec2 center = b2Vec2(0, 0), float32 w = 1, float32 h = 1, float32 m = 1, float32 f = 0.5, float32 r = 0.5, b2BodyType bt = b2_dynamicBody);
+b2Body* CreateCapsule(b2Vec2 center = b2Vec2(0, 0), float32 w = 1, float32 h = 1, float32 m = 1, float32 f = 0.5, float32 r = 0.5, b2BodyType bt = b2_dynamicBody);
+b2Body* CreateCircle(b2Vec2 center = b2Vec2(0, 0), float32 rad = 1, float32 m = 1, float32 f = 0.5, float32 r = 0.5, b2BodyType bt = b2_dynamicBody);
+b2Body* CreateHouses(b2Vec2 center = b2Vec2(0, 0), float32 m = 1000, float32 f = 1, float32 r = 1, b2BodyType bt = b2_staticBody);
+b2Body* CreateLine(b2Vec2 center = b2Vec2(0, -39.5), b2Vec2 left = b2Vec2(-39.5, 0), b2Vec2 right = b2Vec2(39.5, 0), float32 m = 2, float32 f = 0.5, float32 r = 0.5, b2BodyType bt = b2_staticBody);
+b2Body* CreateRectangle(b2Vec2 center = b2Vec2(0, 0), float32 w = 1, float32 h = 1, float32 m = 1, float32 f = 0.5, float32 r = 0.5, b2BodyType bt = b2_dynamicBody);
 void Delete();//Remove caixas que saem de cena
 void DeleteBodies();//Remove todos corpos do cenário
+void DeleteJoints();//Remove todas juntas do cenário
 void InitBox2D();//Função de inicialização da Box2D
 float32 PolygonArea(b2Vec2* vertices, int size);//Calcula área de um polígono CONVEXO
 float RandomInRange(float least, float most);//Retorna um float aleatório no intervalo [least, most]
 void RunBox2D();//Função de Execução da Simulação
 void SetGravity(b2Vec2 gravity);//Função de configuração da gravidade
 
+struct GearJoints {
+	b2RevoluteJoint* rJoint;
+	b2PrismaticJoint* pJoint;
+	b2GearJoint* gJoint;
+};
+
+struct WheelJoints {
+	b2WheelJoint* wheel1;
+	b2WheelJoint* wheel2;
+};
+
+b2DistanceJoint* CreateDistanceJoint(b2Body *bodyA, b2Body *bodyB, b2Vec2 pos1 = b2Vec2_zero, b2Vec2 pos2 = b2Vec2_zero, bool collide = true);
+b2RevoluteJoint* CreateRevoluteJoint(b2Body *bodyA, b2Body *bodyB, b2Vec2 pos = b2Vec2_zero, bool collide = true);
+b2PrismaticJoint* CreatePrismaticJoint(b2Body *bodyA, b2Body *bodyB, b2Vec2 pos = b2Vec2_zero, bool collide = false);
+b2PulleyJoint* CreatePulleyJoint(b2Body *bodyA, b2Body *bodyB, b2Vec2 pos = b2Vec2_zero, bool collide = true);
+GearJoints* CreateGearJoint(b2Body *bodyA, b2Body *bodyB, b2Body *floor, b2Vec2 pos = b2Vec2_zero, bool collide = true);
+WheelJoints* CreateWheelJoint(b2Body *bodyA, b2Body *bodyB, b2Vec2 pos = b2Vec2_zero, bool collide = true);
+
 static void click_callback(GLFWwindow* window, int button, int action, int mode);//Callback de click de mouse da glfw
 static void error_callback(int error, const char* description);//Callback de erro da glfw
 static void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods);//Callback de teclado da glfw
 static void move_callback(GLFWwindow* window, double xpos, double ypos);//Callback de movimentação de mouse da glfw
+
+void CreateRobot();
 
 //Algumas globais para interface e simulação (IDEAL: criar uma classe gerenciadora)
 float32 timeStep;
@@ -142,6 +163,8 @@ int main(int argc, char** argv)
 	}
 	glfwDestroyWindow(window);
 	glfwTerminate();
+	world->~b2World();
+	world = NULL;
 	exit(EXIT_SUCCESS);
 	return 0;
 }
@@ -154,6 +177,9 @@ void CreateBodies()
 
 	float32 w23 = 5;
 	float32 h23 = 20;
+
+	float32 w32 = 8;
+	float32 h32 = 30;
 
 	switch (10 * list + task)
 	{
@@ -225,10 +251,50 @@ void CreateBodies()
 		bodies.push_back(CreateLine(b2Vec2(0, -39.5), b2Vec2(-50, 0), b2Vec2(50, 0), 2, 1.0f, 0.0f, b2_staticBody));
 		bodies.push_back(CreateCircle(b2Vec2(0, -39.5 + h23 / 2), w23, 100.0f, 1.0f, 0.0f, b2_dynamicBody));
 		break;
+
+	case 31:
+		SetGravity(defaultGravity);
+		bodies.push_back(CreateLine(b2Vec2(0, -39.5), b2Vec2(-50, 0), b2Vec2(50, 0), 2, 1.0f, 0.0f, b2_staticBody));
+		
+		CreateRobot();
+		break;
+	case 32:
+		SetGravity(defaultGravity);
+		bodies.push_back(CreateLine(b2Vec2(0, -39.5), b2Vec2(-50, 0), b2Vec2(50, 0), 2, 1.0f, 0.0f, b2_staticBody));
+		
+		bodies.push_back(CreateRectangle(b2Vec2(-35.0f, -39.5 + 20 /2), 10, 20, 100.0f, 1.0f, 0.0f, b2_staticBody));
+		bodies.push_back(CreateRectangle(b2Vec2(-35.0f+ 1 * 10, -23.5 + 4 / 2), 9, 4, 100.0f, 1.0f, 0.0f, b2_dynamicBody));
+		bodies.push_back(CreateRectangle(b2Vec2(-35.0f+ 2 * 10, -23.5 + 4 / 2), 9, 4, 100.0f, 1.0f, 0.0f, b2_dynamicBody));
+		bodies.push_back(CreateRectangle(b2Vec2(-35.0f+ 3 * 10, -23.5 + 4 / 2), 9, 4, 100.0f, 1.0f, 0.0f, b2_dynamicBody));
+		bodies.push_back(CreateRectangle(b2Vec2(-35.0f+ 4 * 10, -23.5 + 4 / 2), 9, 4, 100.0f, 1.0f, 0.0f, b2_dynamicBody));
+		bodies.push_back(CreateRectangle(b2Vec2(-35.0f+ 5 * 10, -23.5 + 4 / 2), 9, 4, 100.0f, 1.0f, 0.0f, b2_dynamicBody));
+		bodies.push_back(CreateRectangle(b2Vec2(-35.0f+ 6 * 10, -23.5 + 4 / 2), 9, 4, 100.0f, 1.0f, 0.0f, b2_dynamicBody));
+		bodies.push_back(CreateRectangle(b2Vec2(35.0f, -39.5 + 20 / 2), 10, 20, 100.0f, 1.0f, 0.0f, b2_staticBody));
+
+		b2RevoluteJointDef dJointDef;
+		b2Vec2 pos;
+
+		pos = 0.5f * (bodies[1]->GetWorldCenter() + bodies[2]->GetWorldCenter()) + b2Vec2(0, 4);
+		dJointDef.Initialize(bodies[1], bodies[2], pos);
+		dJointDef.collideConnected = true;
+		world->CreateJoint(&dJointDef);
+
+		for (int i = 2; i < bodies.size()-2; i++)
+		{
+			pos = 0.5f * (bodies[i]->GetWorldCenter() + bodies[i+1]->GetWorldCenter());
+			dJointDef.Initialize(bodies[i], bodies[i + 1], pos);
+			dJointDef.collideConnected = true;
+			world->CreateJoint(&dJointDef);
+		}
+
+		pos = 0.5f * (bodies[7]->GetWorldCenter() + bodies[8]->GetWorldCenter()) + b2Vec2(0, 4);
+		dJointDef.Initialize(bodies[7], bodies[8], pos);
+		dJointDef.collideConnected = true;
+		world->CreateJoint(&dJointDef);
 	}
 }
 
-b2Body *CreateCapsule(b2Vec2 center, float32 w, float32 h, float32 m, float32 f, float32 r, b2BodyType bt)
+b2Body* CreateCapsule(b2Vec2 center, float32 w, float32 h, float32 m, float32 f, float32 r, b2BodyType bt)
 {
 	float32 rad = w / 2;
 
@@ -266,7 +332,7 @@ b2Body *CreateCapsule(b2Vec2 center, float32 w, float32 h, float32 m, float32 f,
 	return b;
 }
 
-b2Body *CreateCircle(b2Vec2 center, float32 rad, float32 m, float32 f, float32 r, b2BodyType bt)
+b2Body* CreateCircle(b2Vec2 center, float32 rad, float32 m, float32 f, float32 r, b2BodyType bt)
 {
 	b2Body *b;
 
@@ -290,7 +356,7 @@ b2Body *CreateCircle(b2Vec2 center, float32 rad, float32 m, float32 f, float32 r
 	return b;
 }
 
-b2Body *CreateHouses(b2Vec2 center, float32 m, float32 f, float32 r, b2BodyType bt)
+b2Body* CreateHouses(b2Vec2 center, float32 m, float32 f, float32 r, b2BodyType bt)
 {
 	b2Body *b;
 
@@ -332,7 +398,7 @@ b2Body *CreateHouses(b2Vec2 center, float32 m, float32 f, float32 r, b2BodyType 
 	return b;
 }
 
-b2Body *CreateLine(b2Vec2 center, b2Vec2 left, b2Vec2 right, float32 m, float32 f, float32 r, b2BodyType bt)
+b2Body* CreateLine(b2Vec2 center, b2Vec2 left, b2Vec2 right, float32 m, float32 f, float32 r, b2BodyType bt)
 {
 	b2Body* b;
 
@@ -359,7 +425,7 @@ b2Body *CreateLine(b2Vec2 center, b2Vec2 left, b2Vec2 right, float32 m, float32 
 	return b;
 }
 
-b2Body *CreateRectangle(b2Vec2 center, float32 w, float32 h, float32 m, float32 f, float32 r, b2BodyType bt)
+b2Body* CreateRectangle(b2Vec2 center, float32 w, float32 h, float32 m, float32 f, float32 r, b2BodyType bt)
 {
 	b2Body *b;
 
@@ -415,6 +481,22 @@ void DeleteBodies()
 		world->DestroyBody(*it);
 	}
 	toDelete.clear();
+	bodies.clear();
+}
+
+void DeleteJoints()
+{
+	std::vector<b2Joint*> toDelete;
+	b2Joint *temp;
+	for (temp = world->GetJointList(); temp; temp = temp->GetNext())
+	{
+		toDelete.push_back(temp);
+	}
+	for (std::vector<b2Joint*>::iterator it = toDelete.begin(); it != toDelete.end(); ++it) {
+		world->DestroyJoint(*it);
+	}
+	toDelete.clear();
+	bodies.clear();
 }
 
 void InitBox2D()
@@ -455,6 +537,176 @@ void SetGravity(b2Vec2 gravity)
 	gravityMagnitude = sqrtf(grav.x * grav.x + grav.y * grav.y);
 }
 
+b2DistanceJoint* CreateDistanceJoint(b2Body *bodyA, b2Body *bodyB, b2Vec2 pos1, b2Vec2 pos2, bool collide)
+{
+	b2DistanceJointDef dJointDef;
+	dJointDef.Initialize(bodyA, bodyB, pos1, pos2);
+	dJointDef.collideConnected = collide;
+
+	b2DistanceJoint* dJoint = (b2DistanceJoint*)world->CreateJoint(&dJointDef);
+	return dJoint;
+}
+
+b2RevoluteJoint* CreateRevoluteJoint(b2Body *bodyA, b2Body *bodyB, b2Vec2 pos, bool collide)
+{
+	b2RevoluteJointDef rJointDef;
+	rJointDef.Initialize(bodyA, bodyB, pos);
+	//rJointDef.collideConnected = true;
+
+	//Para limitar o angulo
+	//rJointDef.lowerAngle = GrausParaRadianos(-45); // -45 degrees
+	//rJointDef.upperAngle =GrausParaRadianos(45); // 45 degrees
+	//rJointDef.enableLimit = true;
+
+	//Para criar um motor
+	//rJointDef.maxMotorTorque = 100.0f; //N*m
+	//rJointDef.motorSpeed = 10.0f; //radianos por segundo 
+	//rJointDef.enableMotor = true;
+
+	b2RevoluteJoint* rJoint = (b2RevoluteJoint*)world->CreateJoint(&rJointDef);
+	return rJoint;
+}
+
+b2PrismaticJoint* CreatePrismaticJoint(b2Body *bodyA, b2Body *bodyB, b2Vec2 pos, bool collide)
+{
+	b2Vec2 axis(0, 1);
+	//Para definir um outro eixo (em termos de um vetor normalizado)
+	axis = b2Vec2(1 * cos(b2_pi / 4), 1 * sin(b2_pi / 4));
+
+	b2PrismaticJointDef pJointDef;
+	pJointDef.Initialize(bodyA, bodyB, pos, axis);
+	pJointDef.collideConnected = collide;
+
+	//Para limitar a translação
+	/*pJointDef.lowerTranslation = -5.0;
+	pJointDef.upperTranslation = 5.0;
+	pJointDef.enableLimit = true;*/
+
+	//Para criar um motor
+	//pJointDef.maxMotorForce = 50.0f; //N
+	//pJointDef.motorSpeed = -10.0f; //metros por segundo 
+	//pJointDef.enableMotor = true;
+
+	b2PrismaticJoint* pJoint = (b2PrismaticJoint*)world->CreateJoint(&pJointDef);
+	return pJoint;
+}
+
+b2PulleyJoint* CreatePulleyJoint(b2Body *bodyA, b2Body *bodyB, b2Vec2 pos, bool collide)
+{
+	b2Vec2 worldAnchorOnBody1 = bodyA->GetWorldCenter();
+	b2Vec2 worldAnchorOnBody2 = bodyB->GetWorldCenter();
+
+	b2Vec2 ground1(worldAnchorOnBody1.x, worldAnchorOnBody1.y + 10);
+	b2Vec2 ground2(worldAnchorOnBody2.x, worldAnchorOnBody2.y + 10);
+
+	b2PulleyJointDef puJointDef;
+	puJointDef.Initialize(bodyA, bodyB, ground1, ground2, worldAnchorOnBody1, worldAnchorOnBody2, 1.0);
+	puJointDef.collideConnected = collide;
+
+	b2PulleyJoint* puJoint = (b2PulleyJoint*)world->CreateJoint(&puJointDef);
+	return puJoint;
+}
+
+GearJoints* CreateGearJoint(b2Body *bodyA, b2Body *bodyB, b2Body *floor, b2Vec2 pos, bool collide)
+{
+	b2Vec2 worldAnchorOnBody1 = bodyA->GetWorldCenter();
+	b2Vec2 worldAnchorOnBody2 = bodyB->GetWorldCenter();
+
+	//Criação da junta revoluta
+	b2RevoluteJointDef rJointDef;
+	rJointDef.Initialize(bodyA, bodyB, worldAnchorOnBody1);
+	//rJointDef.maxMotorTorque = 100.0f; //N-m
+	//rJointDef.motorSpeed = -10.0f; //radianos por segundo 
+	//rJointDef.enableMotor = true;
+
+	b2RevoluteJoint* rJoint = (b2RevoluteJoint*)world->CreateJoint(&rJointDef);
+
+	//Criação da junta prismática
+	b2Vec2 eixo(0, 1);
+	b2PrismaticJointDef pJointDef;
+	pJointDef.Initialize(floor, bodyB, worldAnchorOnBody2, eixo);
+	pJointDef.collideConnected = true;
+	b2PrismaticJoint* pJoint = (b2PrismaticJoint*)world->CreateJoint(&pJointDef);
+
+	//Criação da junta de engrenagem
+	b2GearJointDef gJointDef;
+	gJointDef.bodyA = bodyA;
+	gJointDef.bodyB = bodyB;
+	gJointDef.joint1 = rJoint;
+	gJointDef.joint2 = pJoint;
+	gJointDef.ratio = b2_pi;//2 * b2_pi;
+	b2GearJoint* gJoint = (b2GearJoint*)world->CreateJoint(&gJointDef);
+
+	GearJoints* gearJoints;
+	gearJoints->rJoint = rJoint;
+	gearJoints->pJoint = pJoint;
+	gearJoints->gJoint = gJoint;
+	return gearJoints;
+}
+
+WheelJoints* CreateWheelJoint(b2Body *bodyA, b2Body *bodyB, b2Vec2 pos, bool collide)
+{
+	float scaleFactor = 3.0; //fator de escala para o tamanho do carro
+	b2PolygonShape chassis;
+	b2Vec2 vertices[8];
+	vertices[0].Set(-1.5f*scaleFactor, -0.5f*scaleFactor);
+	vertices[1].Set(1.5f*scaleFactor, -0.5f*scaleFactor);
+	vertices[2].Set(1.5f*scaleFactor, 0.0f*scaleFactor);
+	vertices[3].Set(0.0f*scaleFactor, 0.9f*scaleFactor);
+	vertices[4].Set(-1.15f*scaleFactor, 0.9f*scaleFactor);
+	vertices[5].Set(-1.5f*scaleFactor, 0.2f*scaleFactor);
+	chassis.Set(vertices, 6);
+
+	b2CircleShape circle;
+	circle.m_radius = 0.4f*scaleFactor;
+
+	//Posição do carro
+	float carPosY = -20.0;
+	float carPosX = -20.0;
+
+	b2BodyDef bd;
+	bd.type = b2_dynamicBody;
+	bd.position.Set(carPosX, carPosY);
+	b2Body* car = world->CreateBody(&bd);
+	car->CreateFixture(&chassis, 1.0f);
+
+	b2FixtureDef fd;
+	fd.shape = &circle;
+	fd.density = 1.0f;
+	fd.friction = 0.9f;
+
+	bd.position.Set(carPosX - scaleFactor, carPosY - 0.5f*scaleFactor);
+	b2Body* body1 = world->CreateBody(&bd);
+	body1->CreateFixture(&fd);
+
+	bd.position.Set(carPosX + scaleFactor, carPosY - 0.5f*scaleFactor);
+	b2Body* body2 = world->CreateBody(&bd);
+	body2->CreateFixture(&fd);
+
+	//Criação das juntas de rodas
+	b2WheelJointDef jJointDef;
+	b2Vec2 axis(0.0f, 1.0f);
+
+	jJointDef.Initialize(car, body1, body1->GetPosition(), axis);
+	jJointDef.motorSpeed = -30.0f;
+	jJointDef.maxMotorTorque = 30.0f;
+	jJointDef.enableMotor = true;
+	jJointDef.dampingRatio = 0.7;
+	b2WheelJoint* wheelJoint1 = (b2WheelJoint*)world->CreateJoint(&jJointDef);
+
+	jJointDef.Initialize(car, body2, body2->GetPosition(), axis);
+	//jJointDef.motorSpeed = 0.0f;
+	//jJointDef.maxMotorTorque = 10.0f;
+	//jJointDef.enableMotor = false;
+	jJointDef.dampingRatio = 0.7;
+	b2WheelJoint* wheelJoint2 = (b2WheelJoint*)world->CreateJoint(&jJointDef);
+
+	WheelJoints* wheelJoints;
+	wheelJoints->wheel1 = wheelJoint1;
+	wheelJoints->wheel2 = wheelJoint2;
+	return wheelJoints;
+}
+
 static void click_callback(GLFWwindow* window, int button, int action, int mode)
 {
 	/*if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS)
@@ -477,41 +729,49 @@ static void key_callback(GLFWwindow* window, int key, int scancode, int action, 
 	if ((key == GLFW_KEY_1) && action == GLFW_PRESS) {
 		task = 1;
 		DeleteBodies();
+		DeleteJoints();
 		CreateBodies();
 	}
 	if ((key == GLFW_KEY_2) && action == GLFW_PRESS) {
 		task = 2;
 		DeleteBodies();
+		DeleteJoints();
 		CreateBodies();
 	}
 	if ((key == GLFW_KEY_3) && action == GLFW_PRESS) {
 		task = 3;
 		DeleteBodies();
+		DeleteJoints();
 		CreateBodies();
 	}
 	if ((key == GLFW_KEY_4) && action == GLFW_PRESS) {
 		task = 4;
 		DeleteBodies();
+		DeleteJoints();
 		CreateBodies();
 	}
 	if ((key == GLFW_KEY_5) && action == GLFW_PRESS) {
 		task = 5;
 		DeleteBodies();
+		DeleteJoints();
 		CreateBodies();
 	}
 	if ((key == GLFW_KEY_6) && action == GLFW_PRESS) {
 		task = 6;
 		DeleteBodies();
+		DeleteJoints();
 		CreateBodies();
 	}
 	if ((key == GLFW_KEY_7) && action == GLFW_PRESS) {
 		task = 7;
 		DeleteBodies();
+		DeleteJoints();
 		CreateBodies();
 	}
 	if ((key == GLFW_KEY_8) && action == GLFW_PRESS) {
 		task = 8;
 		DeleteBodies();
+		DeleteJoints();
 		CreateBodies();
 	}
 
@@ -519,12 +779,21 @@ static void key_callback(GLFWwindow* window, int key, int scancode, int action, 
 		list = 1;
 		task = 1;
 		DeleteBodies();
+		DeleteJoints();
 		CreateBodies();
 	}
 	if ((key == GLFW_KEY_KP_2) && action == GLFW_PRESS) {
 		list = 2;
 		task = 1;
 		DeleteBodies();
+		DeleteJoints();
+		CreateBodies();
+	}
+	if ((key == GLFW_KEY_KP_3) && action == GLFW_PRESS) {
+		list = 3;
+		task = 1;
+		DeleteBodies();
+		DeleteJoints();
 		CreateBodies();
 	}
 
@@ -745,4 +1014,165 @@ static void key_callback(GLFWwindow* window, int key, int scancode, int action, 
 static void move_callback(GLFWwindow* window, double xpos, double ypos)
 {
 	//std::cout << "Moveu mouse para (" << xpos << ", " << ypos << ")" << std::endl;
+}
+
+void CreateRobot()
+{
+	float scaleFactor = 8; //fator de escala para o tamanho do carro
+	b2PolygonShape chassis;
+	b2Vec2 vertices[8];
+	vertices[0].Set(-1.5f*scaleFactor, -0.5f*scaleFactor);
+	vertices[1].Set(1.5f*scaleFactor, -0.5f*scaleFactor);
+	vertices[2].Set(1.5f*scaleFactor, 0.5f*scaleFactor);
+	vertices[3].Set(-1.5f*scaleFactor, 0.5f*scaleFactor);
+	chassis.Set(vertices, 4);
+
+	b2CircleShape circle;
+	circle.m_radius = 0.4f*scaleFactor;
+
+	//Posição do carro
+	float carPosX = -10.0;
+	float carPosY = -10.0;
+
+	b2BodyDef bd;
+	bd.type = b2_dynamicBody;
+	bd.position.Set(carPosX, carPosY);
+	b2Body* CreateRobott1 = world->CreateBody(&bd);
+	CreateRobott1->CreateFixture(&chassis, 1.0f);
+
+	b2FixtureDef fd;
+	fd.shape = &circle;
+	fd.density = 1.0f;
+	fd.friction = 1.0f;
+
+	bd.position.Set(carPosX - scaleFactor, carPosY - 0.5f*scaleFactor);
+	b2Body* body1 = world->CreateBody(&bd);
+	body1->CreateFixture(&fd);
+
+	bd.position.Set(carPosX + scaleFactor, carPosY - 0.5f*scaleFactor);
+	b2Body* body2 = world->CreateBody(&bd);
+	body2->CreateFixture(&fd);
+
+	//Criação das juntas de rodas
+	b2WheelJointDef jJointDef;
+	b2Vec2 axis(0.0f, 1.0f);
+
+	jJointDef.Initialize(CreateRobott1, body1, body1->GetPosition(), axis);
+	jJointDef.motorSpeed = -30.0f;
+	jJointDef.maxMotorTorque = 30.0f;
+	jJointDef.enableMotor = true;
+	jJointDef.dampingRatio = 0.7;
+	b2WheelJoint* wheelJoint1 = (b2WheelJoint*)world->CreateJoint(&jJointDef);
+
+	jJointDef.Initialize(CreateRobott1, body2, body2->GetPosition(), axis);
+	jJointDef.dampingRatio = 0.7;
+	b2WheelJoint* wheelJoint2 = (b2WheelJoint*)world->CreateJoint(&jJointDef);
+
+	//Posição do carro
+	carPosX = 10.0;
+	carPosY = -10.0;
+
+	bd.position.Set(carPosX, carPosY);
+	b2Body* CreateRobott2 = world->CreateBody(&bd);
+	CreateRobott2->CreateFixture(&chassis, 1.0f);
+
+	bd.position.Set(carPosX - scaleFactor, carPosY - 0.5f*scaleFactor);
+	b2Body* body3 = world->CreateBody(&bd);
+	body3->CreateFixture(&fd);
+
+	bd.position.Set(carPosX + scaleFactor, carPosY - 0.5f*scaleFactor);
+	b2Body* body4 = world->CreateBody(&bd);
+	body4->CreateFixture(&fd);
+
+	//Criação das juntas de rodas
+	jJointDef.Initialize(CreateRobott2, body3, body3->GetPosition(), axis);
+	jJointDef.motorSpeed = -30.0f;
+	jJointDef.maxMotorTorque = 30.0f;
+	jJointDef.enableMotor = true;
+	jJointDef.dampingRatio = 0.7;
+	b2WheelJoint* wheelJoint3 = (b2WheelJoint*)world->CreateJoint(&jJointDef);
+
+	jJointDef.Initialize(CreateRobott2, body4, body4->GetPosition(), axis);
+	jJointDef.dampingRatio = 0.7;
+	b2WheelJoint* wheelJoint4 = (b2WheelJoint*)world->CreateJoint(&jJointDef);
+
+	b2Body* leg1 = CreateRectangle(b2Vec2(-10, 2), 24, 16, 1, 1.0, 0.0, b2_dynamicBody);
+	b2Body* leg2 = CreateRectangle(b2Vec2(10, 2), 24, 16, 1, 1.0, 0.0, b2_dynamicBody);
+
+	b2DistanceJointDef dJointDef;
+	dJointDef.Initialize(CreateRobott1, leg1, CreateRobott1->GetWorldPoint(b2Vec2(-12, 4)), leg1->GetWorldPoint(b2Vec2(-12, -8)));
+	dJointDef.collideConnected = true;
+	b2DistanceJoint* ankle11 = (b2DistanceJoint*)world->CreateJoint(&dJointDef);
+
+	dJointDef.Initialize(CreateRobott1, leg1, CreateRobott1->GetWorldPoint(b2Vec2(12, 4)), leg1->GetWorldPoint(b2Vec2(12, -8)));
+	dJointDef.collideConnected = true;
+	b2DistanceJoint* ankle12 = (b2DistanceJoint*)world->CreateJoint(&dJointDef);
+
+	dJointDef.Initialize(CreateRobott2, leg2, CreateRobott2->GetWorldPoint(b2Vec2(-12, 4)), leg2->GetWorldPoint(b2Vec2(-12, -8)));
+	dJointDef.collideConnected = true;
+	b2DistanceJoint* ankle21 = (b2DistanceJoint*)world->CreateJoint(&dJointDef);
+
+	dJointDef.Initialize(CreateRobott2, leg2, CreateRobott2->GetWorldPoint(b2Vec2(12, 4)), leg2->GetWorldPoint(b2Vec2(12, -8)));
+	dJointDef.collideConnected = true;
+	b2DistanceJoint* ankle22 = (b2DistanceJoint*)world->CreateJoint(&dJointDef);
+
+	b2Body* belly = CreateRectangle(b2Vec2(0, 27), 48, 32, 1, 1.0, 0.0, b2_dynamicBody);
+
+	dJointDef.Initialize(belly, leg1, belly->GetWorldPoint(b2Vec2(-24, -16)), leg1->GetWorldPoint(b2Vec2(-12, 8)));
+	dJointDef.collideConnected = true;
+	b2DistanceJoint* hip11 = (b2DistanceJoint*)world->CreateJoint(&dJointDef);
+
+	dJointDef.Initialize(belly, leg1, belly->GetWorldPoint(b2Vec2(0, -16)), leg1->GetWorldPoint(b2Vec2(-12, 8)));
+	dJointDef.collideConnected = true;
+	b2DistanceJoint* hip12 = (b2DistanceJoint*)world->CreateJoint(&dJointDef);
+
+	dJointDef.Initialize(belly, leg2, belly->GetWorldPoint(b2Vec2(24, -16)), leg2->GetWorldPoint(b2Vec2(12, 8)));
+	dJointDef.collideConnected = true;
+	b2DistanceJoint* hip21 = (b2DistanceJoint*)world->CreateJoint(&dJointDef);
+
+	dJointDef.Initialize(belly, leg2, belly->GetWorldPoint(b2Vec2(0, -16)), leg2->GetWorldPoint(b2Vec2(12, 8)));
+	dJointDef.collideConnected = true;
+	b2DistanceJoint* hip22 = (b2DistanceJoint*)world->CreateJoint(&dJointDef);
+
+	b2Body* arm1 = CreateRectangle(b2Vec2(-36, 39), 24, 8, 1, 1.0, 0.0, b2_dynamicBody);
+	b2Body* arm2 = CreateRectangle(b2Vec2(36, 39), 24, 8, 1, 1.0, 0.0, b2_dynamicBody);
+
+	dJointDef.Initialize(belly, arm1, belly->GetWorldPoint(b2Vec2(-24, 12)), arm1->GetWorldPoint(b2Vec2(12, 0)));
+	dJointDef.collideConnected = true;
+	b2DistanceJoint* shoulder1 = (b2DistanceJoint*)world->CreateJoint(&dJointDef);
+
+	dJointDef.Initialize(belly, arm2, belly->GetWorldPoint(b2Vec2(24, 12)), arm2->GetWorldPoint(b2Vec2(-12, 0)));
+	dJointDef.collideConnected = true;
+	b2DistanceJoint* shoulder2 = (b2DistanceJoint*)world->CreateJoint(&dJointDef);
+
+	bd.position.Set(-44, 31);
+	b2Body* hand1 = world->CreateBody(&bd);
+	hand1->CreateFixture(&fd);
+
+	bd.position.Set(44, 31);
+	b2Body* hand2 = world->CreateBody(&bd);
+	hand2->CreateFixture(&fd);
+
+	bd.position.Set(0, 46);
+	b2Body* head = world->CreateBody(&bd);
+	head->CreateFixture(&fd);
+
+	dJointDef.Initialize(belly, head, belly->GetWorldPoint(b2Vec2(0, 16)), head->GetWorldPoint(b2Vec2(0, 0)));
+	dJointDef.collideConnected = true;
+	b2DistanceJoint* neck = (b2DistanceJoint*)world->CreateJoint(&dJointDef);
+
+	b2RevoluteJointDef rJointDef;
+	rJointDef.Initialize(arm1, hand1, hand1->GetWorldPoint(b2Vec2(0, 0)));
+	rJointDef.collideConnected = false;
+	rJointDef.maxMotorTorque = 100.0f;
+	rJointDef.motorSpeed = 10.0f;
+	rJointDef.enableMotor = true;
+	b2RevoluteJoint* wrist1 = (b2RevoluteJoint*)world->CreateJoint(&rJointDef);
+
+	rJointDef.Initialize(arm2, hand2, hand2->GetWorldPoint(b2Vec2(0, 0)));
+	rJointDef.collideConnected = false;
+	rJointDef.maxMotorTorque = 100.0f;
+	rJointDef.motorSpeed = 10.0f;
+	rJointDef.enableMotor = true;
+	b2RevoluteJoint* wrist2 = (b2RevoluteJoint*)world->CreateJoint(&rJointDef);
 }
