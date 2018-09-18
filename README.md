@@ -122,9 +122,9 @@ Definir HelloWorld como projeto de inicialização
 
 ## Interação do usuário com o programa
 
-Pressionar 1 a 9 para criar o mundo do exercício 1 da lista de exercícios 1 a 9
+**Pressionar 1 a 9 para criar o mundo do exercício 1 da lista de exercícios 1 a 9**
 
-Pressionar 1 a 9 para criar o mundo conforme o que é pedido nos exercícios 1 a 9 de uma lista de exercícios
+**Pressionar 1 a 9 para criar o mundo conforme o que é pedido nos exercícios 1 a 9 de uma lista de exercícios**
 
 Nos exercícios que pedem interação:
 
